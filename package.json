@@ -1,0 +1,11 @@
+{
+  "name": "subble",
+  "version": "1.0.0",
+  "private": true,
+  "description": "訂閱泡泡：用泡泡管理訂閱與信用卡分期，資料存在自己的電腦",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": { "node": ">=18" }
+}
