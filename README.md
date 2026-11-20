@@ -32,7 +32,7 @@
 需求：[Node.js](https://nodejs.org) 18 以上（不需要安裝任何 npm 套件）。
 
 ```powershell
-git clone https://github.com/<你的帳號>/subble.git
+git clone https://github.com/wyc915/subble.git
 cd subble
 npm start
 ```
