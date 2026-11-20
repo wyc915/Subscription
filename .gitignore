@@ -1,0 +1,6 @@
+# 個人資料（只留在本機）
+data/
+# 本機工具設定
+.claude/
+node_modules/
+*.log

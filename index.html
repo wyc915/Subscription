@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f7fb">
+  <meta name="description" content="用泡泡看見你的訂閱：越大越貴，一眼掌握每月支出。">
+  <title>訂閱泡泡</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/favicon-48.png" sizes="48x48" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div id="app">
+    <main id="views">
+      <!-- 泡泡池 -->
+      <section class="view" id="view-pool">
+        <header class="pool-head">
+          <button class="total" id="totalBtn" aria-label="切換月／年">
+            <span class="total-label" id="totalLabel">每月訂閱支出</span>
+            <span class="total-num" id="totalNum">NT$ 0</span>
+          </button>
+          <div class="budget" id="budget">
+            <div class="budget-bar"><i id="budgetFill"></i></div>
+            <span id="budgetText"></span>
+          </div>
+          <div class="pool-row">
+            <div class="pool-meta" id="poolMeta"></div>
+            <div class="seg" id="groupSeg" role="tablist">
+              <button data-mode="all" class="on">全部</button>
+              <button data-mode="cat">分類</button>
+            </div>
+          </div>
+        </header>
+        <div class="stage" id="stage">
+          <div class="stage-labels" id="stageLabels"></div>
+          <div class="empty" id="poolEmpty" hidden>
+            <div class="empty-art"><i></i><i></i><i></i></div>
+            <p class="empty-title">泡泡池還是空的</p>
+            <p class="empty-sub">加入你的訂閱，越貴的泡泡越大</p>
+            <button class="btn filled" id="emptyAdd">挑選我的訂閱</button>
+          </div>
+          <div class="trash" id="trash" aria-hidden="true"></div>
+          <div class="hint" id="poolHint" hidden>點泡泡看詳情 · 拖到下方刪除</div>
+        </div>
+        <button class="fab" id="fab" aria-label="新增訂閱"></button>
+      </section>
+
+      <!-- 探索 -->
+      <section class="view" id="view-explore" hidden>
+        <header class="top-bar">
+          <h1>新增訂閱</h1>
+        </header>
+        <div class="search">
+          <span class="ico" data-ico="search"></span>
+          <input id="searchInput" type="search" placeholder="搜尋 Netflix、Spotify、ChatGPT…" autocomplete="off">
+        </div>
+        <div class="chips" id="catChips"></div>
+        <div class="list" id="serviceList"></div>
+        <p class="footnote" id="priceNote"></p>
+      </section>
+
+      <!-- 洞察 -->
+      <section class="view" id="view-insight" hidden>
+        <header class="top-bar"><h1>洞察</h1></header>
+        <div id="insightBody"></div>
+      </section>
+
+      <!-- 設定 -->
+      <section class="view" id="view-settings" hidden>
+        <header class="top-bar"><h1>設定</h1></header>
+        <div id="settingsBody"></div>
+      </section>
+    </main>
+
+    <nav class="navbar" id="navbar">
+      <button data-view="pool" class="on"><span class="ind"><span class="ico" data-ico="bubbles"></span></span><span>泡泡</span></button>
+      <button data-view="explore"><span class="ind"><span class="ico" data-ico="add_circle"></span></span><span>新增</span></button>
+      <button data-view="insight"><span class="ind"><span class="ico" data-ico="insights"></span></span><span>洞察</span></button>
+      <button data-view="settings"><span class="ind"><span class="ico" data-ico="settings"></span></span><span>設定</span></button>
+    </nav>
+  </div>
+
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true">
+    <div class="handle" id="sheetHandle"><i></i></div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </div>
+  <div class="snackbar" id="snack"><span id="snackText"></span><button id="snackAction"></button></div>
+  <div class="onboard" id="onboard" hidden></div>
+  <input type="file" id="importFile" accept="application/json" hidden>
+
+  <script src="js/data.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
