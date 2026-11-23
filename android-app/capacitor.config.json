@@ -1,0 +1,15 @@
+{
+  "appId": "com.wyc915.subble",
+  "appName": "訂閱泡泡",
+  "webDir": "www",
+  "android": {
+    "adjustMarginsForEdgeToEdge": "force",
+    "backgroundColor": "#f7f7fb"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_subble",
+      "iconColor": "#4b55c8"
+    }
+  }
+}

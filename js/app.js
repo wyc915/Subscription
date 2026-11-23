@@ -50,10 +50,15 @@ const store = {
   get: (k, d = null) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } },
   set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} },
 };
+// Android App（Capacitor）：純離線版，資料只存在手機的原生儲存（Capacitor Preferences），不連任何伺服器
+const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const Prefs = () => NATIVE && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences;
+const apiUrl = () => 'api/state';
 const sync = { mode: 'local', rev: +store.get(KEY + '.rev', 0), at: store.get(KEY + '.at'), dirty: store.get(KEY + '.dirty') === '1', timer: 0, busy: false };
 const normalize = s => ({ subs: Array.isArray(s?.subs) ? s.subs : [], settings: { ...DEFAULT_SETTINGS, ...(s?.settings || {}) } });
 function save() {
   store.set(KEY, JSON.stringify(state));
+  if (NATIVE) { const p = Prefs(); if (p) p.set({ key: KEY, value: JSON.stringify(state) }).catch(() => {}); return; }
   if (sync.mode === 'local') return;
   sync.dirty = true; store.set(KEY + '.dirty', '1');
   clearTimeout(sync.timer); sync.timer = setTimeout(push, 350);
@@ -70,10 +75,11 @@ function adopt(remote, msg) {
   if (msg) snack(msg);
 }
 async function push() {
+  if (NATIVE) return;
   if (sync.busy) { clearTimeout(sync.timer); sync.timer = setTimeout(push, 300); return; }
   sync.busy = true;
   try {
-    const r = await fetch('api/state', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ baseRev: sync.rev, state }) });
+    const r = await fetch(apiUrl(), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ baseRev: sync.rev, state }) });
     if (r.status === 409) adopt(await r.json(), '其他裝置剛更新過資料，已載入最新版本');
     else if (r.ok) { const j = await r.json(); markSynced(j.rev, j.updatedAt); }
     else throw new Error(r.status);
@@ -81,9 +87,10 @@ async function push() {
   sync.busy = false;
 }
 async function pull() {
+  if (NATIVE) return;
   if (sheetOpen || sync.busy) return; // 編輯中不打斷
   let remote;
-  try { const r = await fetch('api/state', { cache: 'no-store' }); if (!r.ok) throw new Error(r.status); remote = await r.json(); }
+  try { const r = await fetch(apiUrl(), { cache: 'no-store' }); if (!r.ok) throw new Error(r.status); remote = await r.json(); }
   catch (e) { if (sync.mode !== 'local') { sync.mode = 'offline'; updateSyncUi(); } return; }
   if (!remote.state) { // 主機上還沒有資料：把這台裝置現有的資料搬上去
     sync.mode = 'server'; sync.rev = remote.rev;
@@ -97,8 +104,22 @@ async function pull() {
 function syncText() {
   const t = sync.at ? new Date(sync.at).toLocaleString('zh-TW', { hour12: false, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
   return sync.mode === 'server' ? `已連線主機 · 資料存在主機電腦，所有裝置共用 · 最後更新 ${t}`
+    : sync.mode === 'device' ? '離線版：資料只存在這支手機，不會連到任何伺服器。換手機或重灌前請先「匯出備份」'
     : sync.mode === 'offline' ? '暫時連不到主機，變更先存在這台裝置，恢復連線後自動上傳'
     : '未連到主機伺服器，資料只存在這台裝置的瀏覽器';
+}
+if (NATIVE) sync.mode = 'device';
+// 讀取手機原生儲存；1.0 版存在 WebView 的資料會在第一次開啟時搬過來
+async function loadNative() {
+  const p = Prefs(); if (!p) return;
+  try {
+    const { value } = await p.get({ key: KEY });
+    if (value) {
+      const s = normalize(JSON.parse(value));
+      if (JSON.stringify(s) !== JSON.stringify(state)) { state = s; store.set(KEY, value); if (pool) render(); }
+    } else if (state.subs.length || S().onboarded) await p.set({ key: KEY, value: JSON.stringify(state) });
+    for (const k of ['.host', '.rev', '.at', '.dirty']) store.set(KEY + k, null); // 清掉 1.0 版的同步紀錄
+  } catch (e) {}
 }
 function updateSyncUi() { const el = $('#syncStatus'); if (el) { el.textContent = syncText(); el.dataset.mode = sync.mode; } }
 const S = () => state.settings;
@@ -437,6 +458,7 @@ function render() {
   if (view === 'explore') renderExplore();
   if (view === 'insight') renderInsight();
   if (view === 'settings') renderSettings();
+  scheduleNative(); // 資料變動後重排 App 通知
 }
 
 function renderPool() {
@@ -822,7 +844,7 @@ function showBar(i) {
 function renderSettings() {
   const st = S();
   const sw = (id, on) => `<label class="switch"><input type="checkbox" id="${id}" ${on ? 'checked' : ''}><i></i></label>`;
-  const perm = 'Notification' in window ? Notification.permission : 'unsupported';
+  const perm = NATIVE ? nativePerm : 'Notification' in window ? Notification.permission : 'unsupported';
   $('#settingsBody').innerHTML = `
     <div class="set-title">預算與換算</div>
     <div class="set-group">
@@ -832,7 +854,7 @@ function renderSettings() {
     <div class="set-title">提醒</div>
     <div class="set-group">
       <div class="set-item"><div class="tx"><div>扣款前提醒</div><small>泡泡外圈會脈動，並發送通知</small></div><input class="num" id="sRemind" type="number" min="0" max="14" value="${st.remindDays}" style="width:80px"></div>
-      <button class="set-item" id="sNotify">${ico('bell')}<div class="tx"><div>系統通知</div><small>${perm === 'granted' ? '已開啟：開啟 App 時通知即將扣款項目' : perm === 'denied' ? '已被封鎖，請至瀏覽器設定開啟' : perm === 'unsupported' ? '此瀏覽器不支援' : '點此允許通知'}</small></div></button>
+      <button class="set-item" id="sNotify">${ico('bell')}<div class="tx"><div>系統通知</div><small>${perm === 'granted' ? (NATIVE ? '已開啟：扣款前會在早上 9 點通知（App 關閉時也會）' : '已開啟：開啟 App 時通知即將扣款項目') : perm === 'denied' ? '已被封鎖，請至瀏覽器設定開啟' : perm === 'unsupported' ? '此瀏覽器不支援' : '點此允許通知'}</small></div></button>
     </div>
     <div class="set-title">外觀</div>
     <div class="set-group">
@@ -841,7 +863,7 @@ function renderSettings() {
     </div>
     <div class="set-title">資料</div>
     <div class="set-group">
-      <button class="set-item" id="sExport">${ico('download')}<div class="tx"><div>匯出備份</div><small>下載 JSON 檔</small></div></button>
+      <button class="set-item" id="sExport">${ico('download')}<div class="tx"><div>匯出備份</div><small>${NATIVE ? '存成 JSON 檔，可存到雲端硬碟或傳給自己' : '下載 JSON 檔'}</small></div></button>
       <button class="set-item" id="sImport">${ico('upload')}<div class="tx"><div>匯入備份</div><small>從 JSON 檔還原</small></div></button>
       <button class="set-item" id="sOnboard">${ico('grid')}<div class="tx"><div>快速多選訂閱</div><small>重新勾選你有的服務</small></div></button>
       <button class="set-item danger" id="sReset">${ico('restart')}<div class="tx"><div>清除所有資料</div><small>刪除全部訂閱與設定</small></div></button>
@@ -852,8 +874,19 @@ function renderSettings() {
   num('#sBudget', 'budget'); num('#sRate', 'usdRate', 1); num('#sRemind', 'remindDays');
   $$('#sTheme button').forEach(b => b.onclick = () => { st.theme = b.dataset.v; save(); render(); });
   $('#sTint').onchange = e => { st.tint = e.target.checked; save(); applyTheme(); };
-  $('#sNotify').onclick = async () => { if (!('Notification' in window)) return; const p = await Notification.requestPermission(); if (p === 'granted') { st.lastNotify = ''; save(); notifyDue(); } renderSettings(); };
-  $('#sExport').onclick = () => {
+  $('#sNotify').onclick = async () => {
+    if (NATIVE) { await requestNativeNotify(); return renderSettings(); }
+    if (!('Notification' in window)) return; const p = await Notification.requestPermission(); if (p === 'granted') { st.lastNotify = ''; save(); notifyDue(); } renderSettings(); };
+  $('#sExport').onclick = async () => {
+    if (NATIVE) { // App：寫成檔案後用 Android 分享面板存到雲端硬碟、檔案或傳給自己
+      const { Filesystem, Share } = window.Capacitor.Plugins;
+      const name = `subble-backup-${fmtD(today())}.json`;
+      try {
+        const r = await Filesystem.writeFile({ path: name, data: JSON.stringify(state, null, 2), directory: 'CACHE', encoding: 'utf8' });
+        await Share.share({ title: '訂閱泡泡備份', files: [r.uri], dialogTitle: '儲存或傳送備份檔' });
+      } catch (e) { if (!/cancel/i.test(String(e && e.message))) snack('匯出失敗：' + (e && e.message || e)); }
+      return;
+    }
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }));
     a.download = `subble-backup-${fmtD(today())}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
@@ -874,7 +907,43 @@ $('#importFile').onchange = e => {
 };
 
 /* ---------- 通知 ---------- */
+// Android App：用系統排程通知，扣款日前 N 天早上 9 點提醒，App 關閉也會跳出
+let nativePerm = 'prompt', schedT = 0;
+const LN = () => NATIVE && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications;
+async function requestNativeNotify() {
+  const ln = LN(); if (!ln) return;
+  try { nativePerm = (await ln.requestPermissions()).display; } catch (e) {}
+  scheduleNative();
+}
+function scheduleNative() { if (!LN()) return; clearTimeout(schedT); schedT = setTimeout(doScheduleNative, 800); }
+async function doScheduleNative() {
+  const ln = LN();
+  try {
+    nativePerm = (await ln.checkPermissions()).display;
+    if (nativePerm !== 'granted') return;
+    const pend = await ln.getPending();
+    if (pend.notifications.length) await ln.cancel({ notifications: pend.notifications.map(n => ({ id: n.id })) });
+    const t = today(), end = new Date(t.getFullYear(), t.getMonth(), t.getDate() + 75), now = Date.now(), days = new Map();
+    state.subs.forEach(s => billDates(s, t, end).forEach(d => {
+      const at = new Date(d.getFullYear(), d.getMonth(), d.getDate() - S().remindDays, 9, 0);
+      if (+at <= now) return;
+      const k = fmtD(at); if (!days.has(k)) days.set(k, { at, items: [] });
+      days.get(k).items.push({ s, d });
+    }));
+    const list = [...days.values()].sort((a, b) => a.at - b.at).slice(0, 60).map((g, i) => {
+      const sum = g.items.reduce((a, x) => a + perCharge(x.s), 0);
+      return {
+        id: 7000 + i,
+        title: g.items.length > 1 ? `${g.items.length} 筆即將扣款 · ${money(sum)}` : `${g.items[0].s.name} 即將扣款 ${money(sum)}`,
+        body: g.items.map(x => `${x.s.name} ${money(perCharge(x.s))}・${md(x.d)}${isInst(x.s) ? ` 第 ${instNo(x.s, x.d)}/${x.s.periods} 期` : ''}`).join('\n'),
+        schedule: { at: g.at, allowWhileIdle: true },
+      };
+    });
+    if (list.length) await ln.schedule({ notifications: list });
+  } catch (e) { console.warn('schedule failed', e); }
+}
 async function notifyDue() {
+  if (NATIVE) return scheduleNative();
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   const k = fmtD(today()); if (S().lastNotify === k) return;
   const due = state.subs.map(s => ({ s, d: nextBill(s) })).filter(x => x.d && daysTo(x.d) <= S().remindDays);
@@ -956,7 +1025,7 @@ hydrateIcons();
 pool = new Pool($('#stage'));
 render();
 (async () => {
-  await pull(); // 先向主機取得最新資料，再決定是否顯示首次引導
+  if (NATIVE) await loadNative(); else await pull(); // 先載入最新資料，再決定是否顯示首次引導
   if (!S().onboarded && !state.subs.length) openOnboard(true);
   if (state.subs.length) { $('#poolHint').hidden = false; }
   notifyDue();
@@ -965,4 +1034,9 @@ setInterval(() => { renderPool(); }, 60 * 60 * 1000); // 跨日時更新扣款�
 setInterval(() => { if (!document.hidden) pull(); }, 20000); // 其他裝置的變更
 document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
 window.addEventListener('online', pull);
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+if (!NATIVE && 'serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+if (NATIVE) {
+  document.documentElement.classList.add('native');
+  // 第一次開啟就詢問通知權限（Android 13 以上需要）
+  (async () => { const ln = LN(); if (!ln) return; try { nativePerm = (await ln.checkPermissions()).display; if (nativePerm === 'prompt' || nativePerm === 'prompt-with-rationale') await requestNativeNotify(); } catch (e) {} })();
+}

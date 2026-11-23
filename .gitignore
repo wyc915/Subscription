@@ -4,3 +4,10 @@ data/
 .claude/
 node_modules/
 *.log
+# Android 版：建置產物與簽章（金鑰請自行備份，勿提交）
+dist/
+android-app/node_modules/
+android-app/www/
+android-app/keystore/
+android-app/keystore.properties
+android-app/build.log
