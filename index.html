@@ -45,12 +45,12 @@
           <div class="trash" id="trash" aria-hidden="true"></div>
           <div class="hint" id="poolHint" hidden>點泡泡看詳情 · 拖到下方刪除</div>
         </div>
-        <button class="fab" id="fab" aria-label="新增訂閱"></button>
       </section>
 
       <!-- 探索 -->
       <section class="view" id="view-explore" hidden>
-        <header class="top-bar">
+        <header class="top-bar with-back">
+          <button class="back-btn" id="exploreBack" aria-label="返回"><span class="ico" data-ico="back"></span></button>
           <h1>新增訂閱</h1>
         </header>
         <div class="search">
@@ -60,6 +60,12 @@
         <div class="chips" id="catChips"></div>
         <div class="list" id="serviceList"></div>
         <p class="footnote" id="priceNote"></p>
+      </section>
+
+      <!-- 扣款月曆 -->
+      <section class="view" id="view-bills" hidden>
+        <header class="top-bar"><h1>扣款</h1></header>
+        <div id="billsBody"></div>
       </section>
 
       <!-- 洞察 -->
@@ -75,11 +81,16 @@
       </section>
     </main>
 
-    <nav class="navbar" id="navbar">
-      <button data-view="pool" class="on"><span class="ind"><span class="ico" data-ico="bubbles"></span></span><span>泡泡</span></button>
-      <button data-view="explore"><span class="ind"><span class="ico" data-ico="add_circle"></span></span><span>新增</span></button>
-      <button data-view="insight"><span class="ind"><span class="ico" data-ico="insights"></span></span><span>洞察</span></button>
-      <button data-view="settings"><span class="ind"><span class="ico" data-ico="settings"></span></span><span>設定</span></button>
+    <!-- 浮動膠囊導覽列：泡泡・扣款・＋・洞察・設定 -->
+    <nav class="dock" id="navbar" aria-label="主選單">
+      <div class="dock-bar">
+        <span class="dock-ind" id="dockInd" aria-hidden="true"></span>
+        <button class="tab on" data-view="pool"><span class="ico" data-ico="nav_bubbles"></span><span class="lb">泡泡</span></button>
+        <button class="tab" data-view="bills"><span class="ico" data-ico="nav_calendar"></span><span class="lb">扣款</span></button>
+        <button class="dock-add" id="dockAdd" aria-label="新增"><span class="ico" data-ico="nav_plus"></span></button>
+        <button class="tab" data-view="insight"><span class="ico" data-ico="nav_chart"></span><span class="lb">洞察</span></button>
+        <button class="tab" data-view="settings"><span class="ico" data-ico="nav_settings"></span><span class="lb">設定</span></button>
+      </div>
     </nav>
   </div>
 

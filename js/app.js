@@ -28,6 +28,15 @@ const ICONS = {
   tip: '<path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/>',
   restart: '<path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>',
   grid: '<path d="M4 11h7V4H4zm0 9h7v-7H4zm9 0h7v-7h-7zm0-16v7h7V4z"/>',
+  // 底部導覽：線條圖示（部分路徑改寫自 Lucide，ISC License）
+  nav_bubbles: '<g class="ln"><circle cx="8.5" cy="14.5" r="5.5"/><circle cx="17" cy="7" r="3.5"/><circle cx="18.5" cy="17.8" r="2"/></g>',
+  nav_calendar: '<g class="ln"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></g>',
+  nav_chart: '<g class="ln"><path d="M21 12c.55 0 1-.45.95-1A10 10 0 0 0 13 2.05c-.55-.05-1 .4-1 .95v8a1 1 0 0 0 1 1z"/><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/></g>',
+  nav_settings: '<g class="ln"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></g>',
+  nav_plus: '<g class="ln"><path d="M12 5v14M5 12h14"/></g>',
+  back: '<g class="ln"><path d="M15 18l-6-6 6-6"/></g>',
+  chev_l: '<g class="ln"><path d="M15 18l-6-6 6-6"/></g>',
+  chev_r: '<g class="ln"><path d="M9 18l6-6-6-6"/></g>',
 };
 const ico = n => `<span class="ico"><svg viewBox="0 0 24 24">${ICONS[n] || ''}</svg></span>`;
 function hydrateIcons(root = document) { $$('[data-ico]', root).forEach(el => { el.innerHTML = `<svg viewBox="0 0 24 24">${ICONS[el.dataset.ico]}</svg>`; el.removeAttribute('data-ico'); }); }
@@ -282,7 +291,12 @@ class Pool {
     stage.addEventListener('pointercancel', e => this.up(e, true));
     document.addEventListener('visibilitychange', () => document.hidden ? this.stop() : this.start());
   }
-  measure() { const r = this.stage.getBoundingClientRect(); if (r.width) { this.W = r.width; this.H = r.height; this.rescale(); this.start(); } }
+  measure() {
+    const r = this.stage.getBoundingClientRect(); if (!r.width) return;
+    // 泡泡池延伸到浮動導覽列後方，但泡泡的活動範圍停在導覽列上緣
+    const nav = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-h')) || 92;
+    this.W = r.width; this.H = Math.max(160, r.height - nav); this.rescale(); this.start();
+  }
   sync(subs) {
     const ids = new Set(subs.map(s => s.id));
     for (const [id, n] of this.nodes) if (!ids.has(id)) { n.el.classList.add('pop'); setTimeout(() => n.el.remove(), 260); this.nodes.delete(id); }
@@ -456,6 +470,7 @@ function render() {
   applyTheme();
   renderPool();
   if (view === 'explore') renderExplore();
+  if (view === 'bills') renderBills();
   if (view === 'insight') renderInsight();
   if (view === 'settings') renderSettings();
   scheduleNative(); // 資料變動後重排 App 通知
@@ -770,11 +785,74 @@ function renderInsight() {
       <div class="stack">${byCat.filter(x => x.v > 0).map(x => `<i style="flex:${x.v};background:${x.color}"></i>`).join('')}</div>
       <div class="legend">${byCat.map(x => `<div><span class="dot" style="background:${x.color}"></span>${x.c.name}<small style="color:var(--on-surface-var)">${x.n} 項</small><span class="v">${money(x.v)} · ${M ? Math.round(x.v / M * 100) : 0}%</span></div>`).join('')}</div></div>
     ${inst.html}
-    <div class="card"><h3>未來 30 天扣款</h3>${tl.length ? `<div class="timeline">${tl.map(g => `<div class="tl-day"><div class="tl-date${daysTo(g.d) <= S().remindDays ? ' soon' : ''}"><b>${g.d.getDate()}</b><span>${g.d.getMonth() + 1}月 · 週${WD[g.d.getDay()]}</span></div>
-      <div class="tl-items">${g.items.map(s => `<button class="tl-item" data-open="${s.id}"><span class="dot" style="background:${fill(s)}"></span><span class="tl-name">${esc(s.name)}${isInst(s) ? `<small class="tl-no">分期 第 ${instNo(s, g.d)}/${s.periods} 期</small>` : ''}</span><span class="v">${money(perCharge(s))}</span></button>`).join('')}</div></div>`).join('')}</div>` : '<p class="muted">30 天內沒有扣款</p>'}</div>
     <div class="card"><h3>省錢建議</h3><div class="tips">${tips.map(x => `<div class="tip">${ico('tip')}<div>${x}</div></div>`).join('')}</div></div>`;
   showBar(0);
 }
+
+/* ---------- 扣款月曆 ---------- */
+let billsMonth = null, billsSel = null;
+function renderBills() {
+  const t = today(), tk = fmtD(t);
+  if (!billsMonth) billsMonth = new Date(t.getFullYear(), t.getMonth(), 1);
+  if (!billsSel) billsSel = tk;
+  const y = billsMonth.getFullYear(), m = billsMonth.getMonth();
+  const first = new Date(y, m, 1), last = new Date(y, m + 1, 0);
+  const byDay = new Map(); let total = 0, paid = 0, n = 0;
+  state.subs.forEach(s => billDates(s, first, last).forEach(d => {
+    const k = fmtD(d); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(s);
+    const v = perCharge(s); total += v; n++; if (d <= t) paid += v;
+  }));
+  const cells = [];
+  for (let i = 0; i < first.getDay(); i++) cells.push('<span class="cal-cell blank"></span>');
+  for (let d = 1; d <= last.getDate(); d++) {
+    const k = fmtD(new Date(y, m, d)), items = byDay.get(k) || [];
+    const cls = ['cal-cell', k === tk && 'today', k === billsSel && 'sel', k < tk && 'past', items.length && 'has'].filter(Boolean).join(' ');
+    const dots = items.slice(0, 3).map(s => `<i style="background:${s.color}"></i>`).join('') + (items.length > 3 ? '<em>+</em>' : '');
+    cells.push(`<button class="${cls}" data-day="${k}"><span class="dn">${d}</span><span class="dots">${dots}</span></button>`);
+  }
+  const sel = parseD(billsSel), selItems = byDay.get(billsSel) || [];
+  const row = (s, d) => `<button class="bill-row" data-open="${s.id}">${avatar(s)}<div class="tx"><div class="t1">${esc(s.name)}</div>
+      <div class="t2">${isInst(s) ? `分期 第 ${instNo(s, d)}/${s.periods} 期` : esc(s.planName || catName(s.cat))}${s.split > 1 ? ` · ${s.split} 人分攤` : ''}</div></div>
+      <b class="amt">${money(perCharge(s))}</b></button>`;
+  const days = [...byDay.keys()].sort();
+  $('#billsBody').innerHTML = `
+    <div class="card bills-sum">
+      <div class="kpis">
+        <div class="kpi"><span>${m + 1} 月合計 · ${n} 筆</span><b>${money(total)}</b></div>
+        <div class="kpi"><span>${y === t.getFullYear() && m === t.getMonth() ? '本月還要扣' : first > t ? '尚未扣款' : '已全部扣款'}</span><b>${money(first > t ? total : last < t ? 0 : total - paid)}</b></div>
+      </div>
+      ${total > 0 && y === t.getFullYear() && m === t.getMonth() ? `<div class="paid-bar" title="已扣 ${money(paid)}"><i style="width:${(paid / total * 100).toFixed(1)}%"></i></div>` : ''}
+    </div>
+    <div class="card cal">
+      <div class="cal-head">
+        <button class="icon-btn" data-mon="-1" aria-label="上個月">${ico('chev_l')}</button>
+        <b>${y} 年 ${m + 1} 月</b>
+        <button class="icon-btn" data-mon="1" aria-label="下個月">${ico('chev_r')}</button>
+        ${y === t.getFullYear() && m === t.getMonth() ? '' : '<button class="today-btn" data-mon="0">今天</button>'}
+      </div>
+      <div class="cal-grid cal-wd">${[...'日一二三四五六'].map(w => `<span>${w}</span>`).join('')}</div>
+      <div class="cal-grid">${cells.join('')}</div>
+    </div>
+    <div class="card">
+      <h3>${sel.getMonth() + 1} 月 ${sel.getDate()} 日 週${WD[sel.getDay()]}${selItems.length ? `<span class="h3-sub">${money(selItems.reduce((a, s) => a + perCharge(s), 0))}</span>` : ''}</h3>
+      ${selItems.length ? `<div class="bill-list">${selItems.map(s => row(s, sel)).join('')}</div>` : '<p class="muted">這天沒有扣款</p>'}
+    </div>
+    ${days.length ? `<div class="card"><h3>${m + 1} 月扣款明細</h3>${days.map(k => { const d = parseD(k);
+      return `<div class="bill-day${k < tk ? ' past' : ''}"><div class="bd-date"><b>${d.getDate()}</b><span>週${WD[d.getDay()]}</span></div><div class="bill-list">${byDay.get(k).map(s => row(s, d)).join('')}</div></div>`; }).join('')}</div>` : ''}`;
+}
+$('#billsBody').onclick = e => {
+  const day = e.target.closest('[data-day]');
+  if (day) { billsSel = day.dataset.day; haptic(); return renderBills(); }
+  const mon = e.target.closest('[data-mon]');
+  if (mon) {
+    const dlt = +mon.dataset.mon, t = today();
+    billsMonth = dlt ? new Date(billsMonth.getFullYear(), billsMonth.getMonth() + dlt, 1) : new Date(t.getFullYear(), t.getMonth(), 1);
+    const isCur = billsMonth.getFullYear() === t.getFullYear() && billsMonth.getMonth() === t.getMonth();
+    billsSel = isCur ? fmtD(t) : fmtD(billsMonth);
+    return renderBills();
+  }
+  const it = e.target.closest('[data-open]'); if (it) openDetail(it.dataset.open);
+};
 
 /* ---------- 洞察：信用卡分期 ---------- */
 let instMonths = [];
@@ -955,16 +1033,63 @@ async function notifyDue() {
 }
 
 /* ============ 外殼：導覽、底部面板、Snackbar、返回鍵 ============ */
+// 輕觸回饋：App 內用原生震動，瀏覽器用 vibrate（不支援就略過）
+function haptic(kind = 'light') {
+  try {
+    const H = NATIVE && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics;
+    if (H) H.impact({ style: kind === 'medium' ? 'MEDIUM' : 'LIGHT' });
+    else if (navigator.vibrate && navigator.userActivation && navigator.userActivation.hasBeenActive) navigator.vibrate(kind === 'medium' ? 12 : 6);
+  } catch (e) {}
+}
+// 選中指示：上方小橫條以彈簧曲線滑到目前分頁
+function moveIndicator() {
+  const ind = $('#dockInd'), on = $('#navbar .tab.on');
+  if (!on) { ind.classList.add('off'); return; }
+  const bar = $('#navbar .dock-bar').getBoundingClientRect(), r = on.getBoundingClientRect();
+  ind.classList.remove('off');
+  ind.style.transform = `translateX(${(r.left - bar.left + r.width / 2 - 12).toFixed(1)}px)`;
+}
 function go(v) {
+  const changed = v !== view;
   view = v;
   $$('.view').forEach(x => x.hidden = x.id !== 'view-' + v);
-  $$('#navbar button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+  $$('#navbar .tab').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+  moveIndicator();
+  if (changed) $('#views').scrollTop = 0;
   if (v === 'pool') { pool.measure(); pool.start(); } else pool.stop();
   if (v === 'explore') renderExplore();
+  if (v === 'bills') renderBills();
   if (v === 'insight') renderInsight();
   if (v === 'settings') renderSettings();
 }
-$$('#navbar button').forEach(b => b.onclick = () => go(b.dataset.view));
+$$('#navbar .tab').forEach(b => b.onclick = () => { if (b.dataset.view !== view) haptic(); go(b.dataset.view); });
+$('#dockAdd').onclick = () => { haptic('medium'); openAddMenu(); };
+$('#exploreBack').onclick = () => go(lastTab);
+window.addEventListener('resize', moveIndicator);
+let lastTab = 'pool';
+
+// 中央「＋」：選擇要新增的類型
+function openAddMenu() {
+  $('#dockAdd').classList.add('spin');
+  setTimeout(() => $('#dockAdd').classList.remove('spin'), 420);
+  if (view !== 'explore') lastTab = view;
+  openSheet(`<h2>新增</h2>
+    <div class="add-grid">
+      <button data-add="sub"><span class="ai" style="--c:#2a78d6">${ico('search')}</span><b>新增訂閱</b><small>從 40 個常見服務挑選</small></button>
+      <button data-add="inst"><span class="ai" style="--c:#eb6834">${instSvg('card')}</span><b>信用卡分期</b><small>買了什麼、分幾期</small></button>
+      <button data-add="multi"><span class="ai" style="--c:#1baf7a">${ico('grid')}</span><b>快速多選</b><small>一次勾選多個服務</small></button>
+      <button data-add="custom"><span class="ai" style="--c:#6250d6">${ico('upload')}</span><b>自訂訂閱</b><small>上傳 LOGO 自動取色</small></button>
+    </div>`);
+  $('#sheetBody .add-grid').onclick = e => {
+    const b = e.target.closest('[data-add]'); if (!b) return;
+    haptic();
+    const k = b.dataset.add;
+    if (k === 'sub') { closeSheet(); go('explore'); }
+    else if (k === 'inst') openInst(null);
+    else if (k === 'custom') openEditor(null);
+    else { closeSheet(); openOnboard(false); }
+  };
+}
 
 let sheetOpen = false;
 function openSheet(html) {
@@ -998,9 +1123,7 @@ function snack(text, action, fn) {
 /* ---------- 事件 ---------- */
 $('#totalBtn').onclick = () => { S().period = S().period === 'year' ? 'month' : 'year'; save(); renderPool(); [...pool.nodes.values()].forEach(n => n.rShown = 0); };
 $$('#groupSeg button').forEach(b => b.onclick = () => { S().group = b.dataset.mode; save(); renderPool(); pool.rescale(); });
-$('#fab').innerHTML = ico('add');
 $('#trash').innerHTML = ico('delete');
-$('#fab').onclick = () => go('explore');
 $('#emptyAdd').onclick = () => openOnboard(true);
 $('#catChips').onclick = e => { const c = e.target.closest('.chip'); if (c) { exploreCat = c.dataset.cat; renderExplore(); } };
 $('#searchInput').oninput = e => { query = e.target.value; renderExplore(); };
@@ -1022,6 +1145,7 @@ $('#insightBody').addEventListener('pointerover', e => { const bar = e.target.cl
 
 /* ---------- 啟動 ---------- */
 hydrateIcons();
+requestAnimationFrame(moveIndicator);
 pool = new Pool($('#stage'));
 render();
 (async () => {
@@ -1037,6 +1161,15 @@ window.addEventListener('online', pull);
 if (!NATIVE && 'serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 if (NATIVE) {
   document.documentElement.classList.add('native');
+  // Android 返回鍵：先關面板 → 再回上一頁 → 回到泡泡頁 → 最後才把 App 退到背景
+  const AppP = window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+  if (AppP) AppP.addListener('backButton', () => {
+    if (sheetOpen) return closeSheet();
+    if (!$('#onboard').hidden) { $('#onboard').hidden = true; S().onboarded = true; save(); return; }
+    if (view === 'explore') return go(lastTab);
+    if (view !== 'pool') return go('pool');
+    AppP.minimizeApp();
+  });
   // 第一次開啟就詢問通知權限（Android 13 以上需要）
   (async () => { const ln = LN(); if (!ln) return; try { nativePerm = (await ln.checkPermissions()).display; if (nativePerm === 'prompt' || nativePerm === 'prompt-with-rationale') await requestNativeNotify(); } catch (e) {} })();
 }

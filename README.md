@@ -6,8 +6,8 @@
 
 <p align="center">
   <img src="docs/screenshots/01-pool.png" width="260" alt="泡泡池">
-  <img src="docs/screenshots/10-insight-installment.png" width="260" alt="分期分析">
-  <img src="docs/screenshots/13-pool-dark.png" width="260" alt="深色模式">
+  <img src="docs/screenshots/10-bills.png" width="260" alt="扣款月曆">
+  <img src="docs/screenshots/15-pool-dark.png" width="260" alt="深色模式">
 </p>
 
 ---
@@ -17,11 +17,13 @@
 - [用 Tailscale 從其他裝置連線](#用-tailscale-從其他裝置連線)
 - [Android App（純離線版）](#android-app純離線版)
 - [操作說明](#操作說明)
+  - [底部選單](#底部選單)
   - [泡泡池](#1-泡泡池)
-  - [新增訂閱](#2-新增訂閱)
+  - [新增](#2-新增)
   - [信用卡分期](#3-信用卡分期)
-  - [洞察](#4-洞察)
-  - [設定](#5-設定)
+  - [扣款](#4-扣款)
+  - [洞察](#5-洞察)
+  - [設定](#6-設定)
 - [資料與備份](#資料與備份)
 - [專案結構](#專案結構)
 - [圖示與價格來源](#圖示與價格來源)
@@ -144,6 +146,14 @@ tailscale serve --bg --https=5443 http://127.0.0.1:5178
 
 ## 操作說明
 
+### 底部選單
+
+浮在畫面下方的膠囊選單有 5 個位置：**泡泡 ・ 扣款 ・ ＋ ・ 洞察 ・ 設定**。
+
+- 選中的分頁會變成品牌色，上方的小橫條會滑到該分頁。
+- 中央凸起的 **＋** 在每一頁都按得到，顏色跟著品牌色主題變化。
+- Android App 上點選會有輕微震動；返回鍵依序「關閉面板 → 回上一頁 → 回泡泡頁 → 退到背景」。
+
 ### 1. 泡泡池
 
 <p>
@@ -157,33 +167,38 @@ tailscale serve --bg --https=5443 http://127.0.0.1:5178
 - **點最上方的總金額**：切換「每月」與「未來一年」（分期只算到最後一期）。
 - **全部／分類**：分類模式會把泡泡依影音、音樂、AI、信用卡分期…聚成群。
 - **點泡泡**：開啟詳情，可編輯、暫停、刪除。
-- **拖曳泡泡**：可以甩動；拖到底部出現的垃圾桶就會刪除（下方提示列可「復原」）。
+- **拖曳泡泡**：可以甩動；拖到選單上方出現的垃圾桶就會刪除（下方提示列可「復原」）。
 - **外圈脈動**：代表幾天內要扣款（天數在設定裡調整）；虛線外框代表免費試用中。
 - 預算進度條會顯示本月已用幾 %，超出時變紅色。
 
-### 2. 新增訂閱
+### 2. 新增
 
 <p>
-  <img src="docs/screenshots/04-explore.png" width="240" alt="新增頁">
-  <img src="docs/screenshots/05-add-plan.png" width="240" alt="選擇方案">
-  <img src="docs/screenshots/08-quick-select.png" width="240" alt="快速多選">
+  <img src="docs/screenshots/04-add-menu.png" width="240" alt="新增選單">
+  <img src="docs/screenshots/05-explore.png" width="240" alt="新增訂閱">
+  <img src="docs/screenshots/06-add-plan.png" width="240" alt="選擇方案">
+  <img src="docs/screenshots/09-quick-select.png" width="240" alt="快速多選">
 </p>
 
-- 底部「新增」或泡泡池右下角的 **＋**。
-- 內建 40 個台灣常見服務（影音、音樂、AI、雲端與工具、遊戲、生活），可搜尋或用分類篩選。
-- 點服務 → 選方案 → 設定扣款日、**分攤人數**（家庭方案和朋友分攤，泡泡只算你那一份）、是否**免費試用** → 加入泡泡池。
-- **快速多選**：一次勾選多個服務，之後再點泡泡調整方案與扣款日。
-- **自訂訂閱**：清單裡沒有的（健身房、報紙…），上傳 LOGO 會自動萃取品牌色並顯示在泡泡上；可選 TWD／USD 與每週／每月／每年。
-- 美元計價的方案（ChatGPT、Claude…）會依設定的匯率換算台幣。
+點底部中央的 **＋**，從下方選擇：
+
+| 選項 | 說明 |
+|---|---|
+| **新增訂閱** | 內建 40 個台灣常見服務（影音、音樂、AI、雲端與工具、遊戲、生活），可搜尋或用分類篩選。點服務 → 選方案 → 設定扣款日、**分攤人數**（家庭方案和朋友分攤，泡泡只算你那一份）、是否**免費試用** → 加入泡泡池。左上角返回鍵回到原本的分頁 |
+| **信用卡分期** | 見下一節 |
+| **快速多選** | 一次勾選多個服務，之後再點泡泡調整方案與扣款日 |
+| **自訂訂閱** | 清單裡沒有的（健身房、報紙…），上傳 LOGO 會自動萃取品牌色並顯示在泡泡上；可選 TWD／USD 與每週／每月／每年 |
+
+美元計價的方案（ChatGPT、Claude…）會依設定的匯率換算台幣。
 
 ### 3. 信用卡分期
 
 <p>
-  <img src="docs/screenshots/06-installment-form.png" width="240" alt="新增分期">
-  <img src="docs/screenshots/07-installment-detail.png" width="240" alt="分期詳情">
+  <img src="docs/screenshots/07-installment-form.png" width="240" alt="新增分期">
+  <img src="docs/screenshots/08-installment-detail.png" width="240" alt="分期詳情">
 </p>
 
-在「新增」頁最上方點 **信用卡分期**：
+點 **＋ → 信用卡分期**：
 
 | 欄位 | 說明 |
 |---|---|
@@ -199,12 +214,21 @@ tailscale serve --bg --https=5443 http://127.0.0.1:5178
 - 詳情頁可看下次扣款是第幾期、最後一期日期、利率；**清償**可標記提前清償（可復原）。
 - 繳完最後一期，泡泡會自動離開泡泡池，並列在洞察的「已繳清」。
 
-### 4. 洞察
+### 4. 扣款
+
+<p><img src="docs/screenshots/10-bills.png" width="240" alt="扣款月曆"></p>
+
+- 上方：本月扣款合計與筆數、**本月還要扣多少**，進度條顯示已扣比例。
+- **月曆**：有扣款的日子以品牌色小圓點標示，可切換上下月，「今天」一鍵回到本月。
+- 點某一天：列出當天扣款項目與合計，分期會標示第幾期；點項目可開啟詳情。
+- 最下方是整個月的扣款明細，已過的日子會淡化。
+
+### 5. 洞察
 
 <p>
-  <img src="docs/screenshots/09-insight.png" width="240" alt="洞察總覽">
-  <img src="docs/screenshots/10-insight-installment.png" width="240" alt="分期分析">
-  <img src="docs/screenshots/11-insight-tips.png" width="240" alt="省錢建議">
+  <img src="docs/screenshots/11-insight.png" width="240" alt="洞察總覽">
+  <img src="docs/screenshots/12-insight-installment.png" width="240" alt="分期分析">
+  <img src="docs/screenshots/13-insight-tips.png" width="240" alt="省錢建議">
 </p>
 
 - **總覽**：每月、未來一年、每天、未來 30 天將扣款金額，並換算成手搖飲杯數。
@@ -214,18 +238,17 @@ tailscale serve --bg --https=5443 http://127.0.0.1:5178
   - **未來 12 個月每月分期負擔**：依品項堆疊的長條圖，點選（電腦上滑過）某個月可看明細，一眼看出負擔何時下降
   - 各品項進度條、剩餘金額、繳清月份
   - **各卡額度占用**：每張卡尚未繳完的分期總額
-- **未來 30 天扣款**：依日期排列，分期會標示第幾期。
 - **省錢建議**：影音平台太多、音樂服務重疊、家庭方案沒分攤、試用即將到期、年費即將續約、分期占比過高、哪個月起負擔下降、分期快繳完、非 0 利率分期提醒等。
 
-### 5. 設定
+### 6. 設定
 
-<p><img src="docs/screenshots/12-settings.png" width="240" alt="設定"></p>
+<p><img src="docs/screenshots/14-settings.png" width="240" alt="設定"></p>
 
 - **每月預算**、**美元匯率**
-- **扣款前提醒天數**；**系統通知**（需透過 HTTPS 開啟，例如 Tailscale 網址）會在開啟 App 時通知即將扣款的項目
+- **扣款前提醒天數**；**系統通知**：網頁版需透過 HTTPS 開啟（例如 Tailscale 網址），會在開啟時通知即將扣款的項目；Android App 會在扣款日前早上 9 點通知，App 關閉時也會
 - **主題**：系統／淺色／深色；**品牌色主題**：介面主色跟著你最貴的那項支出變化
 - **匯出／匯入備份**（JSON）、**快速多選**、**清除所有資料**
-- 最下方顯示同步狀態
+- 最下方顯示資料狀態（電腦版：同步狀態；Android：離線版）
 
 ---
 
@@ -262,4 +285,5 @@ android-app/              Android 純離線版（Capacitor 7）
   - 官方全彩 App 圖示：取自各品牌官網或 Google Play 商店頁
   - 各 LOGO 為其公司商標，本專案僅用於辨識服務
 - 分期圖示：[Material Symbols](https://fonts.google.com/icons)（Apache License 2.0）
+- 底部選單線條圖示：部分路徑改寫自 [Lucide](https://lucide.dev)（ISC License）
 - 價格為 2026/11 台灣地區參考牌價，部分未經官方確認；各平台會調價，加入後可自行修改。批次更新請改 `js/data.js`。
