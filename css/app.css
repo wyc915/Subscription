@@ -407,5 +407,6 @@ input, select, textarea { font: inherit; color: inherit; }
 
 /* 同步狀態 */
 .sync-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--outline); vertical-align: 1px; }
-.footnote:has(#syncStatus[data-mode="server"]) .sync-dot { background: #1baf7a; }
+.footnote:has(#syncStatus[data-mode="server"]) .sync-dot,
+.footnote:has(#syncStatus[data-mode="device"]) .sync-dot { background: #1baf7a; }
 .footnote:has(#syncStatus[data-mode="offline"]) .sync-dot { background: #eda100; }

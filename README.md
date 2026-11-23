@@ -15,6 +15,7 @@
 ## 目錄
 - [快速開始](#快速開始)
 - [用 Tailscale 從其他裝置連線](#用-tailscale-從其他裝置連線)
+- [Android App（純離線版）](#android-app純離線版)
 - [操作說明](#操作說明)
   - [泡泡池](#1-泡泡池)
   - [新增訂閱](#2-新增訂閱)
@@ -87,6 +88,57 @@ tailscale serve --bg --https=5443 http://127.0.0.1:5178
 - 每次寫入帶版本號；如果兩台裝置幾乎同時修改，後送出的那台會收到「其他裝置剛更新過資料，已載入最新版本」，需要的話再改一次即可。
 - 暫時連不到主機時，變更會先存在該裝置，恢復連線後自動上傳。目前狀態可在「設定」最下方看到（綠點＝已連線主機）。
 - 第一次連上主機時，如果主機還沒有資料，會把這台裝置瀏覽器裡原有的資料搬上去。
+
+---
+
+## Android App（純離線版）
+
+`android-app/` 是用 [Capacitor](https://capacitorjs.com) 7 包裝的 Android App，和上面的電腦版**各自獨立**：
+
+- **完全離線**：資料只存在手機（Android 原生儲存），App 沒有網路權限，不需要電腦或 Tailscale
+- **扣款提醒**：扣款日前 N 天早上 9 點跳系統通知，App 關閉時也會提醒（分期會標示第幾期）
+- **備份**：「設定 → 匯出備份」會產生 JSON 檔並開啟分享面板，可存到雲端硬碟或寄給自己；「匯入備份」從檔案還原。換手機、重灌或移除 App 前請先匯出
+- 介面與功能和電腦版相同（網頁檔在建置時從專案根目錄複製進 App）
+
+### 建置 release APK
+
+需求：Node.js 20 以上、Android Studio（使用其內建 JDK 與 Android SDK）。
+
+1. 安裝套件
+
+   ```powershell
+   cd android-app
+   npm install
+   ```
+
+2. 第一次建置前，建立 release 簽章金鑰與 `android-app/keystore.properties`（兩者都不會提交到 Git，**請自行備份**；弄丟金鑰的話，新版無法覆蓋安裝）
+
+   ```powershell
+   & 'C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe' -genkeypair -keystore keystore\subble-release.jks -alias subble -keyalg RSA -keysize 4096 -validity 10000
+   ```
+
+   ```properties
+   # android-app/keystore.properties
+   storeFile=../../keystore/subble-release.jks
+   storePassword=你設定的密碼
+   keyAlias=subble
+   keyPassword=你設定的密碼
+   ```
+
+3. 建立 `android-app/android/local.properties`，指向 Android SDK
+
+   ```properties
+   sdk.dir=C:/Users/<使用者>/AppData/Local/Android/Sdk
+   ```
+
+4. 建置（輸出在 `android-app/android/app/build/outputs/apk/release/app-release.apk`）
+
+   ```powershell
+   $env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
+   npm run build:release
+   ```
+
+修改網頁程式後重新執行第 4 步即可；要發新版時記得在 `android-app/android/app/build.gradle` 調高 `versionCode`／`versionName`，才能直接覆蓋安裝並保留資料。
 
 ---
 
@@ -197,6 +249,10 @@ sw.js / manifest          PWA（可安裝、離線快取）
 icons/                    App 圖示與 40 個品牌 LOGO（512px PNG）
 scripts/                  啟動、開機自動啟動、移除腳本
 docs/screenshots/         README 截圖
+android-app/              Android 純離線版（Capacitor 7）
+  capacitor.config.json   App 名稱、ID、通知圖示設定
+  scripts/prepare-web.mjs 把網頁檔複製到 www/ 供打包
+  android/                Android 專案（圖示、啟動畫面、簽章設定）
 ```
 
 ## 圖示與價格來源

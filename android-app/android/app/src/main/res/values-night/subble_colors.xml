@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 系統列底色與圖示深淺（深色模式） -->
+<resources>
+    <color name="subble_bars">#121216</color>
+    <bool name="subble_light_bars">false</bool>
+</resources>
