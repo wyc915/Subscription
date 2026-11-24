@@ -403,6 +403,9 @@ input, select, textarea { font: inherit; color: inherit; }
 /* ===== 浮動膠囊導覽列（泡泡・扣款・＋・洞察・設定） ===== */
 .ico svg .ln { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: stroke-width .2s; }
 .dock { position: fixed; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 15; pointer-events: none; }
+/* App：WebView 已停在系統手勢列上緣，選單直接貼齊，不再多留空隙（同 NVR App 的位置） */
+.native { --nav-h: 80px; }
+.native .dock { bottom: 4px; }
 .dock-bar {
   position: relative; max-width: 440px; height: 64px; margin: 0 auto; padding: 0 8px; pointer-events: auto;
   display: flex; align-items: center; justify-content: space-around;

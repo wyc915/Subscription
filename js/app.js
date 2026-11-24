@@ -1232,6 +1232,7 @@ window.addEventListener('online', pull);
 if (!NATIVE && 'serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 if (NATIVE) {
   document.documentElement.classList.add('native');
+  pool.measure(); // App 的選單較低，泡泡範圍隨之放大
   // Android 返回鍵：先關面板 → 再回上一頁 → 回到泡泡頁 → 最後才把 App 退到背景
   const AppP = window.Capacitor.Plugins && window.Capacitor.Plugins.App;
   if (AppP) AppP.addListener('backButton', () => {
