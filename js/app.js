@@ -954,6 +954,15 @@ function showBar(i) {
 }
 
 /* ---------- 設定 ---------- */
+function shakeTip() {
+  const phone = NATIVE || matchMedia('(pointer:coarse)').matches;
+  if (!phone) return '拖動瀏覽器視窗，或滑鼠在泡泡池快速來回晃動';
+  if (!NATIVE && !window.isSecureContext) return '需用 HTTPS 網址開啟（例如 Tailscale 網址）才能讀取動作感應';
+  if (Motion.perm === 'ask') return '點此開關後允許「動作與方向」，就能搖晃手機';
+  if (Motion.perm === 'denied') return '動作感應未被允許；重新整理頁面後再開一次';
+  if (!Motion.ok) return '搖晃手機，泡泡會跟著晃動（尚未收到感應器資料）';
+  return '搖晃手機，泡泡會跟著晃動';
+}
 function renderSettings() {
   const st = S();
   const sw = (id, on) => `<label class="switch"><input type="checkbox" id="${id}" ${on ? 'checked' : ''}><i></i></label>`;
@@ -973,7 +982,7 @@ function renderSettings() {
     <div class="set-group">
       <div class="set-item"><div class="tx"><div>主題</div></div><div class="seg" id="sTheme">${[['system', '系統'], ['light', '淺色'], ['dark', '深色']].map(([k, n]) => `<button data-v="${k}" class="${st.theme === k ? 'on' : ''}">${n}</button>`).join('')}</div></div>
       <div class="set-item"><div class="tx"><div>品牌色主題</div><small>介面隨你最貴的訂閱品牌色變化</small></div>${sw('sTint', st.tint)}</div>
-      <div class="set-item"><div class="tx"><div>搖晃泡泡</div><small>${NATIVE || matchMedia('(pointer:coarse)').matches ? '搖晃手機，泡泡會跟著晃動' : '拖動瀏覽器視窗，或滑鼠在泡泡池快速來回晃動'}</small></div>${sw('sShake', st.shake)}</div>
+      <div class="set-item"><div class="tx"><div>搖晃泡泡</div><small id="shakeTip">${shakeTip()}</small></div>${sw('sShake', st.shake)}</div>
     </div>
     <div class="set-title">資料</div>
     <div class="set-group">
@@ -990,7 +999,8 @@ function renderSettings() {
   $('#sTint').onchange = e => { st.tint = e.target.checked; save(); applyTheme(); };
   $('#sShake').onchange = e => {
     st.shake = e.target.checked; save();
-    if (st.shake && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') DeviceMotionEvent.requestPermission().catch(() => {});
+    if (st.shake) Motion.request();
+    $('#shakeTip').textContent = shakeTip();
   };
   $('#sNotify').onclick = async () => {
     if (NATIVE) { await requestNativeNotify(); return renderSettings(); }
@@ -1190,14 +1200,26 @@ pool = new Pool($('#stage'));
 /* 手機網頁與 App：讀取加速度感應器，搖晃手機時泡泡跟著晃 */
 const Motion = {
   g: null, ok: false,
+  // iOS Safari 必須在使用者點擊（click / touchend）當下請求權限；'granted' | 'denied' | 'ask' | 'none'
+  perm: typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function' ? 'ask' : 'none',
   init() {
     if (!('DeviceMotionEvent' in window)) return;
     window.addEventListener('devicemotion', e => this.on(e));
-    // iOS Safari 需要使用者手勢後才能請求權限
-    if (typeof DeviceMotionEvent.requestPermission === 'function') {
-      const ask = () => { document.removeEventListener('pointerup', ask); if (S().shake) DeviceMotionEvent.requestPermission().catch(() => {}); };
-      document.addEventListener('pointerup', ask);
+    if (this.perm === 'ask') {
+      const ask = () => { if (S().shake && this.perm === 'ask') this.request(); if (this.perm !== 'ask') { document.removeEventListener('touchend', ask); document.removeEventListener('click', ask); } };
+      document.addEventListener('touchend', ask); document.addEventListener('click', ask);
     }
+  },
+  request() {
+    if ((this.perm !== 'ask' && this.perm !== 'denied') || this.pending) return;
+    try {
+      this.pending = true;
+      DeviceMotionEvent.requestPermission().finally(() => { this.pending = false; }).then(r => {
+        this.perm = r === 'granted' ? 'granted' : 'denied';
+        if (view === 'settings') renderSettings();
+        if (r !== 'granted') snack('未允許動作感應，搖晃泡泡無法使用（重新整理頁面可再次詢問）');
+      }).catch(() => {}); // 不是在點擊當下呼叫：保持 'ask'，下次點擊再試
+    } catch (e) {}
   },
   on(e) {
     let a = e.acceleration, lx, ly;
