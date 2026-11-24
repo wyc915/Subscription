@@ -36,7 +36,7 @@ input, select, textarea { font: inherit; color: inherit; }
 @keyframes viewIn { from { opacity: 0; transform: translateY(12px); } }
 
 /* ===== 泡泡池 ===== */
-.pool-head { padding: calc(20px + env(safe-area-inset-top)) 20px 8px; }
+.pool-head { padding: calc(56px + env(safe-area-inset-top)) 44px 8px; }
 .total { display: flex; flex-direction: column; align-items: flex-start; text-align: left; border-radius: 16px; padding: 4px 6px; margin: -4px -6px; }
 .total:active { background: var(--surface-2); }
 .total-label { font-size: 14px; color: var(--on-surface-var); letter-spacing: .1px; display: flex; align-items: center; gap: 4px; }

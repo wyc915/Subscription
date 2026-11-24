@@ -42,7 +42,7 @@ const ico = n => `<span class="ico"><svg viewBox="0 0 24 24">${ICONS[n] || ''}</
 function hydrateIcons(root = document) { $$('[data-ico]', root).forEach(el => { el.innerHTML = `<svg viewBox="0 0 24 24">${ICONS[el.dataset.ico]}</svg>`; el.removeAttribute('data-ico'); }); }
 
 /* ---------- 狀態 ---------- */
-const DEFAULT_SETTINGS = { usdRate: 32.5, budget: 2000, remindDays: 3, theme: 'system', tint: true, period: 'month', group: 'all', onboarded: false, lastNotify: '' };
+const DEFAULT_SETTINGS = { usdRate: 32.5, budget: 2000, remindDays: 3, theme: 'system', tint: true, shake: true, period: 'month', group: 'all', onboarded: false, lastNotify: '' };
 let state = load();
 function load() {
   try {
@@ -286,7 +286,7 @@ class Pool {
     new ResizeObserver(() => this.measure()).observe(stage);
     this.measure();
     stage.addEventListener('pointerdown', e => this.down(e));
-    stage.addEventListener('pointermove', e => this.move(e));
+    stage.addEventListener('pointermove', e => { this.move(e); this.mouseShake(e); });
     stage.addEventListener('pointerup', e => this.up(e));
     stage.addEventListener('pointercancel', e => this.up(e, true));
     document.addEventListener('visibilitychange', () => document.hidden ? this.stop() : this.start());
@@ -396,11 +396,44 @@ class Pool {
       el.style.top = clamp(top - 10, 12, this.H - 12).toFixed(0) + 'px';
     }
   }
+  /* 搖晃：設備往一邊加速，泡泡因慣性往反方向晃（小泡泡比較輕，晃得比較多） */
+  impulse(ix, iy) {
+    if (!S().shake || view !== 'pool') return;
+    for (const n of this.nodes.values()) {
+      if (this.drag && this.drag.n === n) continue;
+      const m = clamp(46 / n.r, .55, 1.7) * (.8 + (n.seed % 1) * .4);
+      n.vx = clamp(n.vx + ix * m, -40, 40); n.vy = clamp(n.vy + iy * m, -40, 40);
+    }
+    this.shakeT = performance.now(); this.start();
+  }
+  // 電腦：滑鼠在泡泡池快速來回晃動（不按鍵）
+  mouseShake(e) {
+    if (e.pointerType !== 'mouse' || e.buttons || this.drag) return;
+    const now = performance.now(), m = this.ms || (this.ms = { x: e.clientX, y: e.clientY, t: now, sx: 0, sy: 0, rev: [] });
+    const dt = Math.max(8, now - m.t), vx = (e.clientX - m.x) / dt * 16, vy = (e.clientY - m.y) / dt * 16;
+    m.x = e.clientX; m.y = e.clientY; m.t = now;
+    const sx = Math.sign(Math.abs(vx) > 6 ? vx : 0), sy = Math.sign(Math.abs(vy) > 6 ? vy : 0);
+    if ((sx && m.sx && sx !== m.sx) || (sy && m.sy && sy !== m.sy)) m.rev.push(now);
+    if (sx) m.sx = sx; if (sy) m.sy = sy;
+    m.rev = m.rev.filter(t => now - t < 700);
+    if (m.rev.length >= 3) this.impulse(-clamp(vx, -60, 60) * .12, -clamp(vy, -60, 60) * .12);
+  }
+  // 電腦：拖動瀏覽器視窗時，泡泡留在原地 → 相對視窗往反方向晃
+  windowShake() {
+    const x = window.screenX, y = window.screenY;
+    if (this.wx != null && (x !== this.wx || y !== this.wy)) {
+      const dx = clamp(x - this.wx, -80, 80), dy = clamp(y - this.wy, -80, 80);
+      if (Math.abs(dx) + Math.abs(dy) < 200) this.impulse(-dx * .35, -dy * .35);
+    }
+    this.wx = x; this.wy = y;
+  }
   start() { if (!this.raf && !document.hidden && !this.stage.closest('[hidden]')) this.raf = requestAnimationFrame(t => this.tick(t)); }
   stop() { cancelAnimationFrame(this.raf); this.raf = 0; }
   tick(t) {
     this.raf = 0;
+    this.windowShake();
     const arr = [...this.nodes.values()], W = this.W, H = this.H, cat = S().group === 'cat', time = t / 1000;
+    const shaking = this.shakeT && t - this.shakeT < 600, bounce = shaking ? .75 : .5; let hit = 0;
     for (const n of arr) {
       n.r += (n.tr - n.r) * .12;
       if (this.drag && this.drag.n === n) continue;
@@ -424,14 +457,16 @@ class Pool {
       }
     }
     for (const n of arr) {
-      if (n.x < n.r) { n.x = n.r; n.vx = Math.abs(n.vx) * .5; } if (n.x > W - n.r) { n.x = W - n.r; n.vx = -Math.abs(n.vx) * .5; }
-      if (n.y < n.r) { n.y = n.r; n.vy = Math.abs(n.vy) * .5; } if (n.y > H - n.r) { n.y = H - n.r; n.vy = -Math.abs(n.vy) * .5; }
+      if (n.x < n.r || n.x > W - n.r) { if (shaking) hit = Math.max(hit, Math.abs(n.vx)); n.x = clamp(n.x, n.r, W - n.r); n.vx = (n.x <= n.r ? 1 : -1) * Math.abs(n.vx) * bounce; }
+      if (n.y < n.r || n.y > H - n.r) { if (shaking) hit = Math.max(hit, Math.abs(n.vy)); n.y = clamp(n.y, n.r, H - n.r); n.vy = (n.y <= n.r ? 1 : -1) * Math.abs(n.vy) * bounce; }
       const sz = (n.r * 2).toFixed(1);
       if (n.el.style.width !== sz + 'px') { n.el.style.width = n.el.style.height = sz + 'px'; }
       n.el.style.transform = `translate3d(${(n.x - n.r).toFixed(1)}px, ${(n.y - n.r).toFixed(1)}px, 0)`;
       this.label(n);
     }
     if (cat) this.placeLabels(arr);
+    // 搖晃時泡泡撞到邊緣：App 上輕震一下
+    if (hit > 10 && NATIVE && t - (this.hitT || 0) > 140) { this.hitT = t; haptic(); }
     if (arr.length) this.start();
   }
   /* 拖曳：點擊開啟詳情、甩動、拖到垃圾桶刪除 */
@@ -938,6 +973,7 @@ function renderSettings() {
     <div class="set-group">
       <div class="set-item"><div class="tx"><div>主題</div></div><div class="seg" id="sTheme">${[['system', '系統'], ['light', '淺色'], ['dark', '深色']].map(([k, n]) => `<button data-v="${k}" class="${st.theme === k ? 'on' : ''}">${n}</button>`).join('')}</div></div>
       <div class="set-item"><div class="tx"><div>品牌色主題</div><small>介面隨你最貴的訂閱品牌色變化</small></div>${sw('sTint', st.tint)}</div>
+      <div class="set-item"><div class="tx"><div>搖晃泡泡</div><small>${NATIVE || matchMedia('(pointer:coarse)').matches ? '搖晃手機，泡泡會跟著晃動' : '拖動瀏覽器視窗，或滑鼠在泡泡池快速來回晃動'}</small></div>${sw('sShake', st.shake)}</div>
     </div>
     <div class="set-title">資料</div>
     <div class="set-group">
@@ -952,6 +988,10 @@ function renderSettings() {
   num('#sBudget', 'budget'); num('#sRate', 'usdRate', 1); num('#sRemind', 'remindDays');
   $$('#sTheme button').forEach(b => b.onclick = () => { st.theme = b.dataset.v; save(); render(); });
   $('#sTint').onchange = e => { st.tint = e.target.checked; save(); applyTheme(); };
+  $('#sShake').onchange = e => {
+    st.shake = e.target.checked; save();
+    if (st.shake && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') DeviceMotionEvent.requestPermission().catch(() => {});
+  };
   $('#sNotify').onclick = async () => {
     if (NATIVE) { await requestNativeNotify(); return renderSettings(); }
     if (!('Notification' in window)) return; const p = await Notification.requestPermission(); if (p === 'granted') { st.lastNotify = ''; save(); notifyDue(); } renderSettings(); };
@@ -1147,6 +1187,37 @@ $('#insightBody').addEventListener('pointerover', e => { const bar = e.target.cl
 hydrateIcons();
 requestAnimationFrame(moveIndicator);
 pool = new Pool($('#stage'));
+/* 手機網頁與 App：讀取加速度感應器，搖晃手機時泡泡跟著晃 */
+const Motion = {
+  g: null, ok: false,
+  init() {
+    if (!('DeviceMotionEvent' in window)) return;
+    window.addEventListener('devicemotion', e => this.on(e));
+    // iOS Safari 需要使用者手勢後才能請求權限
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+      const ask = () => { document.removeEventListener('pointerup', ask); if (S().shake) DeviceMotionEvent.requestPermission().catch(() => {}); };
+      document.addEventListener('pointerup', ask);
+    }
+  },
+  on(e) {
+    let a = e.acceleration, lx, ly;
+    if (a && a.x != null) { lx = a.x; ly = a.y; }
+    else { // 只有含重力的數值：用低通濾波估出重力再扣掉
+      const ag = e.accelerationIncludingGravity; if (!ag || ag.x == null) return;
+      if (!this.g) this.g = { x: ag.x, y: ag.y };
+      this.g.x += (ag.x - this.g.x) * .1; this.g.y += (ag.y - this.g.y) * .1;
+      lx = ag.x - this.g.x; ly = ag.y - this.g.y;
+    }
+    this.ok = true;
+    if (Math.hypot(lx, ly) < 1.5) return; // 忽略手持的細微晃動
+    // 裝置座標（x 右、y 上）轉成螢幕座標（x 右、y 下），考慮橫向旋轉
+    const ang = ((screen.orientation && screen.orientation.angle) ?? window.orientation ?? 0) * Math.PI / 180;
+    const sx = lx * Math.cos(ang) + ly * Math.sin(ang), sy = -(-lx * Math.sin(ang) + ly * Math.cos(ang));
+    const k = .45 * (e.interval > 0 ? clamp(e.interval * (e.interval < 1 ? 1000 : 1) / 16, .5, 3) : 1);
+    pool.impulse(-sx * k, -sy * k);
+  },
+};
+Motion.init();
 render();
 (async () => {
   if (NATIVE) await loadNative(); else await pull(); // 先載入最新資料，再決定是否顯示首次引導
